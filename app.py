@@ -7,6 +7,18 @@ from plotly.subplots import make_subplots
 import numpy as np
 from datetime import date
 
+st.markdown("""
+<style>
+    html, body, [data-testid="stAppViewContainer"],
+    [data-testid="stApp"] {
+        background-color: #0f0c29 !important;
+        color: #ffffff !important;
+    }
+    [data-testid="stSidebar"] {
+        background-color: #1a1a2e !important;
+    }
+</style>
+""", unsafe_allow_html=True) 
 st.set_page_config(
     page_title="IHSG Sectoral Dashboard",
     layout="wide",
