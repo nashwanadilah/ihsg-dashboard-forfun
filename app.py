@@ -26,17 +26,27 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-    /* Background utama */
-    .stApp {
-        background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);}
+    html, body { background-color: #0f0c29 !important; }
     
-    /* Sidebar */
-    [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #1a1a2e, #16213e);
-        border-right: 1px solid #e94560;
+    [data-testid="stApp"],
+    [data-testid="stAppViewContainer"],
+    [data-testid="stMain"],
+    .main, .block-container {
+        background-color: #0f0c29 !important;
+        color: #ffffff !important;
     }
     
-    /* Header utama */
+    [data-testid="stSidebar"],
+    [data-testid="stSidebarContent"] {
+        background-color: #1a1a2e !important;
+        color: #ffffff !important;
+        border-right: 1px solid #e94560 !important;
+    }
+
+    p, span, label, div, h1, h2, h3 {
+        color: #ffffff !important;
+    }
+
     .main-header {
         background: linear-gradient(90deg, #e94560, #f5a623, #00d2ff);
         -webkit-background-clip: text;
@@ -44,47 +54,54 @@ st.markdown("""
         font-size: 2.8rem;
         font-weight: 900;
         text-align: center;
-        margin-bottom: 0;
     }
-    
-    /* Subtitle */
+
     .sub-header {
-        color: #a0a0b0;
+        color: #a0a0b0 !important;
         text-align: center;
         font-size: 1rem;
-        margin-top: 0;
-        margin-bottom: 1.5rem;
     }
-    
-    /* Metric cards */
+
     [data-testid="metric-container"] {
-        background: linear-gradient(135deg, #1a1a2e, #16213e);
-        border: 1px solid #e94560;
-        border-radius: 12px;
-        padding: 10px;
+        background: linear-gradient(135deg, #1a1a2e, #16213e) !important;
+        border: 1px solid #e94560 !important;
+        border-radius: 12px !important;
+        padding: 10px !important;
     }
-    
-    /* Tab styling */
+
+    [data-testid="stMetricValue"],
+    [data-testid="stMetricLabel"],
+    [data-testid="stMetricDelta"] {
+        color: #ffffff !important;
+    }
+
     .stTabs [data-baseweb="tab-list"] {
-        background: #1a1a2e;
-        border-radius: 10px;
-        padding: 4px;
+        background: #1a1a2e !important;
+        border-radius: 10px !important;
     }
+
     .stTabs [data-baseweb="tab"] {
-        color: #a0a0b0;
-        border-radius: 8px;
-        font-weight: 600;
+        color: #a0a0b0 !important;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
     }
+
     .stTabs [aria-selected="true"] {
         background: linear-gradient(90deg, #e94560, #f5a623) !important;
         color: white !important;
     }
 
-    /* Divider */
-    hr {
-        border-color: #e94560;
-        opacity: 0.3;
+    [data-testid="stMultiSelect"] div,
+    [data-testid="stDateInput"] div,
+    [data-testid="stSelectbox"] div {
+        background-color: #16213e !important;
+        color: #ffffff !important;
+        border-color: #e94560 !important;
     }
+
+    hr { border-color: #e94560 !important; opacity: 0.3 !important; }
+
+    a { color: #e94560 !important; }
 </style>
 """, unsafe_allow_html=True)
 
