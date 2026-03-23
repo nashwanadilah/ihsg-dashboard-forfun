@@ -1,47 +1,134 @@
 import streamlit as st
 import yfinance as yf
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
+import plotly.graph_objects as go
+import plotly.express as px
+from plotly.subplots import make_subplots
 import numpy as np
 from datetime import date
 
 st.set_page_config(
     page_title="IHSG Sectoral Dashboard",
-    page_icon="📊",
-    layout="wide"
-)
+    layout="wide",
+    initial_sidebar_state="expanded")
 
-# ── Header ───────────────────────────────────────
-st.title("📊 IHSG Sectoral Analysis Dashboard")
-st.markdown("**Nashwa Nadilah** | Actuarial Science, Universitas Indonesia")
-st.markdown("---")
+st.markdown("""
+<style>
+    /* Background utama */
+    .stApp {
+        background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);}
+    
+    /* Sidebar */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #1a1a2e, #16213e);
+        border-right: 1px solid #e94560;
+    }
+    
+    /* Header utama */
+    .main-header {
+        background: linear-gradient(90deg, #e94560, #f5a623, #00d2ff);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-size: 2.8rem;
+        font-weight: 900;
+        text-align: center;
+        margin-bottom: 0;
+    }
+    
+    /* Subtitle */
+    .sub-header {
+        color: #a0a0b0;
+        text-align: center;
+        font-size: 1rem;
+        margin-top: 0;
+        margin-bottom: 1.5rem;
+    }
+    
+    /* Metric cards */
+    [data-testid="metric-container"] {
+        background: linear-gradient(135deg, #1a1a2e, #16213e);
+        border: 1px solid #e94560;
+        border-radius: 12px;
+        padding: 10px;
+    }
+    
+    /* Tab styling */
+    .stTabs [data-baseweb="tab-list"] {
+        background: #1a1a2e;
+        border-radius: 10px;
+        padding: 4px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        color: #a0a0b0;
+        border-radius: 8px;
+        font-weight: 600;
+    }
+    .stTabs [aria-selected="true"] {
+        background: linear-gradient(90deg, #e94560, #f5a623) !important;
+        color: white !important;
+    }
 
-# ── Sidebar (Panel Kontrol) ───────────────────────
-st.sidebar.header("⚙️ Settings")
+    /* Divider */
+    hr {
+        border-color: #e94560;
+        opacity: 0.3;
+    }
+</style>
+""", unsafe_allow_html=True)
 
-TICKERS = {
-    "IHSG":      "^JKSE",
-    "Financial (BBCA)":  "BBCA.JK",
-    "Consumer (UNVR)":   "UNVR.JK",
-    "Mining (ADRO)":     "ADRO.JK",
-    "Telco (TLKM)":      "TLKM.JK",
-    "Property (BSDE)":   "BSDE.JK",
+COLORS = {
+    "IHSG":                  "#00d2ff",
+    "Financial (BBCA)":      "#e94560",
+    "Consumer (UNVR)":       "#f5a623",
+    "Mining (ADRO)":         "#00ff88",
+    "Telco (TLKM)":          "#bf5fff",
+    "Property (BSDE)":       "#ff6b6b",
 }
 
-# Widget pilih saham
+PLOTLY_TEMPLATE = "plotly_dark"
+
+# ── Header ───────────────────────────────────────
+st.markdown('<p class="main-header">📊 IHSG Sectoral Dashboard</p>',
+            unsafe_allow_html=True)
+st.markdown('<p class="sub-header">Nashwa Nadilah · Actuarial Science, Universitas Indonesia · <a href="https://github.com/nashwanadilah/IHSG-Sectoral-Analysis" style="color:#e94560">GitHub</a></p>',
+            unsafe_allow_html=True)
+st.markdown("---")
+
+# ── Sidebar ───────────────────────────────────────
+st.sidebar.markdown("## ⚙️ Settings")
+
+TICKERS = {
+    "IHSG":                  "^JKSE",
+    "Financial (BBCA)":      "BBCA.JK",
+    "Consumer (UNVR)":       "UNVR.JK",
+    "Mining (ADRO)":         "ADRO.JK",
+    "Telco (TLKM)":          "TLKM.JK",
+    "Property (BSDE)":       "BSDE.JK",
+}
+
 selected = st.sidebar.multiselect(
-    "Pilih Saham:",
+    "📈 Pilih Saham:",
     options=list(TICKERS.keys()),
-    default=["IHSG", "Financial (BBCA)", "Mining (ADRO)"]
+    default=["IHSG", "Financial (BBCA)", "Mining (ADRO)", "Consumer (UNVR)"]
 )
 
-# Widget pilih periode
 start_date = st.sidebar.date_input("Start Date", date(2020, 1, 1))
-end_date   = st.sidebar.date_input("End Date", date(2025, 12, 31))
+end_date   = st.sidebar.date_input("End Date",   date(2025, 12, 31))
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 📌 About")
+st.sidebar.markdown("""
+Proyek analisis performa sektoral pasar modal Indonesia 
+menggunakan data historis 2020–2025.
+
+Mencakup analisis:
+- Trend & Return
+- Volatilitas
+- Korelasi
+""")
 
 # ── Load Data ─────────────────────────────────────
-@st.cache_data  # supaya data tidak re-download setiap kali ada perubahan
+@st.cache_data
 def load_data(tickers_dict, start, end):
     raw = {}
     for name, ticker in tickers_dict.items():
@@ -58,191 +145,321 @@ if len(selected) == 0:
     st.warning("Pilih minimal 1 saham di panel kiri!")
     st.stop()
 
-with st.spinner("Mengunduh data..."):
+with st.spinner("Mengunduh data pasar..."):
     prices = load_data(
         {k: TICKERS[k] for k in selected},
         start_date, end_date
     )
 
-st.success(f"Data loaded: {prices.index[0].date()} → {prices.index[-1].date()}")
+# ── Metric Cards ──────────────────────────────────
+total_ret = (prices.iloc[-1] / prices.iloc[0] - 1) * 100
+daily_ret = prices.pct_change().dropna()
+ann_vol   = daily_ret.std() * np.sqrt(252) * 100
+
+cols = st.columns(len(selected))
+for i, stock in enumerate(prices.columns):
+    ret = total_ret[stock]
+    vol = ann_vol[stock]
+    with cols[i]:
+        st.metric(
+            label=f"**{stock}**",
+            value=f"{ret:.1f}%",
+            delta=f"Vol: {vol:.1f}%",
+        )
+
 st.markdown("---")
 
-# ── Tab Layout ────────────────────────────────────
+# ── Tabs ──────────────────────────────────────────
 tab1, tab2, tab3, tab4 = st.tabs([
-    "📈 Performance",
-    "📉 Volatility",
-    "🔗 Correlation",
-    "📊 Summary"
+    "Performance",
+    "Volatility",
+    "Correlation",
+    "Summary"
 ])
-
-COLORS = ["#1B4F72","#2E86C1","#28B463","#E67E22","#8E44AD","#C0392B"]
 
 # ════════════════════════════════════════════════
 # TAB 1 — PERFORMANCE
 # ════════════════════════════════════════════════
 with tab1:
     st.subheader("Normalized Price Performance (Base = 100)")
-    
+
     normalized = prices.div(prices.iloc[0]) * 100
-    
-    fig, ax = plt.subplots(figsize=(12, 5))
-    for i, col in enumerate(normalized.columns):
-        ax.plot(normalized.index, normalized[col],
-                label=col, color=COLORS[i % len(COLORS)], linewidth=1.8)
-    ax.axhline(100, color="gray", linestyle=":", linewidth=1, alpha=0.5)
-    ax.set_ylabel("Normalized Price (Base 100)")
-    ax.legend(loc="upper left", ncol=2)
-    ax.grid(True, alpha=0.3)
-    plt.tight_layout()
-    st.pyplot(fig)
-    
-    # Yearly return table
+
+    fig = go.Figure()
+    for col in normalized.columns:
+        fig.add_trace(go.Scatter(
+            x=normalized.index,
+            y=normalized[col],
+            name=col,
+            line=dict(color=COLORS.get(col, "#ffffff"), width=2.5),
+            hovertemplate=f"<b>{col}</b><br>Date: %{{x}}<br>Value: %{{y:.1f}}<extra></extra>"
+        ))
+
+    # COVID highlight
+    fig.add_vrect(
+        x0="2020-02-24", x1="2020-03-24",
+        fillcolor="red", opacity=0.1,
+        annotation_text="COVID Crash", annotation_position="top left",
+        annotation_font_color="red"
+    )
+    fig.add_hline(y=100, line_dash="dot", line_color="gray", opacity=0.5)
+
+    fig.update_layout(
+        template=PLOTLY_TEMPLATE,
+        height=450,
+        legend=dict(orientation="h", yanchor="bottom", y=1.02),
+        xaxis_title="Date",
+        yaxis_title="Normalized Price (Base 100)",
+        hovermode="x unified",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0.2)",
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+    # ── Yearly Return ──
     st.subheader("Yearly Return (%)")
+
     yearly = {}
     for year in range(start_date.year, end_date.year + 1):
         yr_data = prices[prices.index.year == year]
         if len(yr_data) >= 2:
             yearly[year] = ((yr_data.iloc[-1] / yr_data.iloc[0]) - 1) * 100
-    
+
     returns_df = pd.DataFrame(yearly).T.round(2)
-    st.dataframe(returns_df.style.format("{:.2f}%")
-                 .background_gradient(cmap="RdYlGn", axis=None),
-                 use_container_width=True)
+
+    fig2 = go.Figure()
+    for i, col in enumerate(returns_df.columns):
+        fig2.add_trace(go.Bar(
+            name=col,
+            x=returns_df.index.astype(str),
+            y=returns_df[col],
+            marker_color=COLORS.get(col, "#ffffff"),
+            opacity=0.85,
+            hovertemplate=f"<b>{col}</b><br>Year: %{{x}}<br>Return: %{{y:.1f}}%<extra></extra>"
+        ))
+
+    fig2.add_hline(y=0, line_color="white", line_width=0.8, opacity=0.5)
+    fig2.update_layout(
+        template=PLOTLY_TEMPLATE,
+        barmode="group",
+        height=400,
+        xaxis_title="Year",
+        yaxis_title="Return (%)",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0.2)",
+    )
+    st.plotly_chart(fig2, use_container_width=True)
 
 # ════════════════════════════════════════════════
 # TAB 2 — VOLATILITY
 # ════════════════════════════════════════════════
 with tab2:
-    st.subheader("Annualized Volatility (%)")
-    
-    daily_returns = prices.pct_change().dropna()
-    ann_vol = (daily_returns.std() * np.sqrt(252) * 100).sort_values(ascending=False)
-    
     col1, col2 = st.columns(2)
-    
+
     with col1:
-        fig, ax = plt.subplots(figsize=(6, 4))
-        bars = ax.bar(ann_vol.index, ann_vol.values,
-                      color=COLORS[:len(ann_vol)], alpha=0.85)
-        for bar, val in zip(bars, ann_vol.values):
-            ax.text(bar.get_x() + bar.get_width()/2,
-                    bar.get_height() + 0.3,
-                    f"{val:.1f}%", ha="center", fontsize=9, fontweight="bold")
-        ax.set_ylabel("Volatility (%)")
-        ax.set_title("Annualized Volatility Ranking")
-        plt.xticks(rotation=20)
-        plt.tight_layout()
-        st.pyplot(fig)
-    
+        st.subheader("Volatility Ranking")
+        ann_vol_sorted = ann_vol.sort_values(ascending=True)
+
+        fig = go.Figure(go.Bar(
+            x=ann_vol_sorted.values,
+            y=ann_vol_sorted.index,
+            orientation="h",
+            marker=dict(
+                color=ann_vol_sorted.values,
+                colorscale="RdYlGn_r",
+                showscale=True
+            ),
+            text=[f"{v:.1f}%" for v in ann_vol_sorted.values],
+            textposition="outside",
+            hovertemplate="<b>%{y}</b><br>Volatility: %{x:.1f}%<extra></extra>"
+        ))
+        fig.update_layout(
+            template=PLOTLY_TEMPLATE,
+            height=350,
+            xaxis_title="Annualized Volatility (%)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0.2)",
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
     with col2:
-        # Rolling volatility
-        roll_vol = daily_returns.rolling(30).std() * np.sqrt(252) * 100
-        fig, ax = plt.subplots(figsize=(6, 4))
-        for i, col in enumerate(roll_vol.columns):
-            ax.plot(roll_vol.index, roll_vol[col],
-                    label=col, color=COLORS[i % len(COLORS)], linewidth=1.5)
-        ax.set_ylabel("Volatility (%)")
-        ax.set_title("Rolling 30-Day Volatility")
-        ax.legend(fontsize=8)
-        ax.grid(True, alpha=0.3)
-        plt.tight_layout()
-        st.pyplot(fig)
-    
-    # Risk-Return Scatter
-    st.subheader("Risk-Return Profile")
-    total_ret = (prices.iloc[-1] / prices.iloc[0] - 1) * 100
-    
-    fig, ax = plt.subplots(figsize=(8, 5))
-    for i, stock in enumerate(ann_vol.index):
-        ax.scatter(ann_vol[stock], total_ret[stock],
-                   color=COLORS[i % len(COLORS)], s=150, zorder=5)
-        ax.annotate(stock, xy=(ann_vol[stock], total_ret[stock]),
-                    xytext=(6, 4), textcoords="offset points",
-                    fontsize=9, fontweight="bold")
-    ax.axhline(0, color="gray", linestyle="--", linewidth=0.8, alpha=0.5)
-    ax.set_xlabel("Annualized Volatility / Risk (%)")
-    ax.set_ylabel("Cumulative Return (%)")
-    ax.set_title("Risk vs Return")
-    ax.grid(True, alpha=0.3)
-    plt.tight_layout()
-    st.pyplot(fig)
+        st.subheader("Risk-Return Profile")
+        fig = go.Figure()
+        for stock in ann_vol.index:
+            fig.add_trace(go.Scatter(
+                x=[ann_vol[stock]],
+                y=[total_ret[stock]],
+                mode="markers+text",
+                name=stock,
+                text=[stock],
+                textposition="top center",
+                marker=dict(
+                    size=18,
+                    color=COLORS.get(stock, "#ffffff"),
+                    line=dict(width=2, color="white")
+                ),
+                hovertemplate=f"<b>{stock}</b><br>Risk: %{{x:.1f}}%<br>Return: %{{y:.1f}}%<extra></extra>"
+            ))
+
+        fig.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.5)
+        fig.add_vline(x=ann_vol.mean(), line_dash="dash",
+                      line_color="gray", opacity=0.5)
+        fig.update_layout(
+            template=PLOTLY_TEMPLATE,
+            height=350,
+            xaxis_title="Annualized Volatility / Risk (%)",
+            yaxis_title="Cumulative Return (%)",
+            showlegend=False,
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0.2)",
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+    # Rolling Volatility
+    st.subheader("Rolling 30-Day Volatility")
+    roll_vol = daily_ret.rolling(30).std() * np.sqrt(252) * 100
+
+    fig = go.Figure()
+    for col in roll_vol.columns:
+        fig.add_trace(go.Scatter(
+            x=roll_vol.index,
+            y=roll_vol[col],
+            name=col,
+            line=dict(color=COLORS.get(col, "#ffffff"), width=1.8),
+            hovertemplate=f"<b>{col}</b><br>Date: %{{x}}<br>Vol: %{{y:.1f}}%<extra></extra>"
+        ))
+
+    fig.add_vrect(
+        x0="2020-02-24", x1="2020-03-24",
+        fillcolor="red", opacity=0.1,
+        annotation_text="COVID Crash",
+        annotation_font_color="red"
+    )
+    fig.update_layout(
+        template=PLOTLY_TEMPLATE,
+        height=380,
+        xaxis_title="Date",
+        yaxis_title="Volatility (%)",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02),
+        hovermode="x unified",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0.2)",
+    )
+    st.plotly_chart(fig, use_container_width=True)
 
 # ════════════════════════════════════════════════
 # TAB 3 — CORRELATION
 # ════════════════════════════════════════════════
 with tab3:
-    st.subheader("Correlation Matrix")
-    
     if len(selected) < 2:
         st.warning("Pilih minimal 2 saham untuk melihat korelasi!")
     else:
-        corr = daily_returns.corr()
-        
-        fig, ax = plt.subplots(figsize=(8, 6))
-        sns.heatmap(corr, annot=True, fmt=".2f", cmap="RdYlGn",
-                    vmin=-1, vmax=1, center=0, square=True,
-                    linewidths=0.5, annot_kws={"size": 11}, ax=ax)
-        ax.set_title("Correlation Matrix — Daily Returns")
-        plt.tight_layout()
-        st.pyplot(fig)
-        
-        # Tabel korelasi ranking
-        st.subheader("Correlation Ranking (Lowest = Best for Diversification)")
+        st.subheader("Correlation Matrix")
+        corr = daily_ret.corr()
+
+        fig = px.imshow(
+            corr,
+            text_auto=".2f",
+            color_continuous_scale="RdYlGn",
+            zmin=-1, zmax=1,
+            aspect="auto",
+            template=PLOTLY_TEMPLATE,
+        )
+        fig.update_layout(
+            height=450,
+            paper_bgcolor="rgba(0,0,0,0)",
+        )
+        fig.update_traces(textfont_size=13)
+        st.plotly_chart(fig, use_container_width=True)
+
+        # Correlation ranking
+        st.subheader("Correlation Ranking")
         pairs = []
-        cols = corr.columns.tolist()
-        for i in range(len(cols)):
-            for j in range(i+1, len(cols)):
+        cols_list = corr.columns.tolist()
+        for i in range(len(cols_list)):
+            for j in range(i+1, len(cols_list)):
                 pairs.append({
-                    "Stock A": cols[i],
-                    "Stock B": cols[j],
-                    "Correlation": round(corr.loc[cols[i], cols[j]], 3)
+                    "Stock A": cols_list[i],
+                    "Stock B": cols_list[j],
+                    "Correlation": round(corr.loc[cols_list[i], cols_list[j]], 3),
+                    "Interpretation": (
+                        "Low — Good for diversification" if abs(corr.loc[cols_list[i], cols_list[j]]) < 0.4
+                        else "Medium" if abs(corr.loc[cols_list[i], cols_list[j]]) < 0.7
+                        else "High — Similar movement"
+                    )
                 })
         pairs_df = pd.DataFrame(pairs).sort_values("Correlation")
-        st.dataframe(pairs_df, use_container_width=True)
+        st.dataframe(pairs_df, use_container_width=True, hide_index=True)
 
 # ════════════════════════════════════════════════
 # TAB 4 — SUMMARY
 # ════════════════════════════════════════════════
 with tab4:
     st.subheader("Portfolio Summary")
-    
-    total_ret = (prices.iloc[-1] / prices.iloc[0] - 1) * 100
-    daily_ret = prices.pct_change().dropna()
-    ann_vol   = daily_ret.std() * np.sqrt(252) * 100
-    
+
     summary = pd.DataFrame({
         "Cumulative Return (%)": total_ret.round(2),
         "Annualized Volatility (%)": ann_vol.round(2),
-        "Best Year": [
-            f"{daily_ret[col].resample('Y').apply(lambda x: (1+x).prod()-1).idxmax().year}"
-            for col in prices.columns
-        ],
-    })
-    
-    st.dataframe(
-        summary.style.format({
-            "Cumulative Return (%)": "{:.2f}%",
-            "Annualized Volatility (%)": "{:.2f}%",
-        }).background_gradient(subset=["Cumulative Return (%)"], cmap="RdYlGn"),
-        use_container_width=True
+        "Risk-Return Ratio": (total_ret / ann_vol).round(2),
+    }).sort_values("Cumulative Return (%)", ascending=False)
+
+    fig = go.Figure(data=[go.Table(
+        header=dict(
+            values=["<b>Stock</b>"] + [f"<b>{c}</b>" for c in summary.columns],
+            fill_color="#e94560",
+            align="center",
+            font=dict(color="white", size=13),
+            height=35
+        ),
+        cells=dict(
+            values=[summary.index] + [summary[c] for c in summary.columns],
+            fill_color=[["#1a1a2e", "#16213e"] * len(summary)],
+            align="center",
+            font=dict(color="white", size=12),
+            height=30
+        )
+    )])
+    fig.update_layout(
+        template=PLOTLY_TEMPLATE,
+        height=300,
+        paper_bgcolor="rgba(0,0,0,0)",
+        margin=dict(t=10, b=10)
     )
-    
-    # Metric cards
-    st.markdown("---")
-    cols = st.columns(len(selected))
-    for i, stock in enumerate(prices.columns):
-        ret = total_ret[stock]
-        vol = ann_vol[stock]
-        with cols[i]:
-            st.metric(
-                label=stock,
-                value=f"{ret:.1f}%",
-                delta=f"Vol: {vol:.1f}%"
-            )
+    st.plotly_chart(fig, use_container_width=True)
+
+    # Cumulative return bar
+    st.subheader("Cumulative Return Ranking")
+    sorted_ret = total_ret.sort_values(ascending=True)
+
+    fig = go.Figure(go.Bar(
+        x=sorted_ret.values,
+        y=sorted_ret.index,
+        orientation="h",
+        marker=dict(
+            color=sorted_ret.values,
+            colorscale="RdYlGn",
+            showscale=True
+        ),
+        text=[f"{v:.1f}%" for v in sorted_ret.values],
+        textposition="outside",
+        hovertemplate="<b>%{y}</b><br>Return: %{x:.1f}%<extra></extra>"
+    ))
+    fig.add_vline(x=0, line_color="white", line_width=0.8, opacity=0.5)
+    fig.update_layout(
+        template=PLOTLY_TEMPLATE,
+        height=350,
+        xaxis_title="Cumulative Return (%)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0.2)",
+    )
+    st.plotly_chart(fig, use_container_width=True)
 
 # ── Footer ────────────────────────────────────────
 st.markdown("---")
 st.markdown(
-    "**Nashwa Nadilah** | Actuarial Science, Universitas Indonesia | "
-    "[GitHub](https://github.com/nashwanadilah/IHSG-Sectoral-Analysis)"
-)
+    "<center><small>Built with ❤️ by <b>Nashwa Nadilah</b> · "
+    "Actuarial Science, Universitas Indonesia · "
+    "<a href='https://github.com/nashwanadilah/IHSG-Sectoral-Analysis' style='color:#e94560'>GitHub</a>"
+    "</small></center>",
+    unsafe_allow_html=True)
