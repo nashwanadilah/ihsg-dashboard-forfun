@@ -117,14 +117,14 @@ COLORS = {
 PLOTLY_TEMPLATE = "plotly_dark"
 
 # ── Header ───────────────────────────────────────
-st.markdown('<p class="main-header">📊 IHSG Sectoral Dashboard</p>',
+st.markdown('<p class="main-header">IHSG Sectoral Dashboard</p>',
             unsafe_allow_html=True)
-st.markdown('<p class="sub-header">Nashwa Nadilah · Actuarial Science, Universitas Indonesia · <a href="https://github.com/nashwanadilah/IHSG-Sectoral-Analysis" style="color:#e94560">GitHub</a></p>',
+st.markdown('<p class="sub-header">Nashwa Nadilah · Actuarial Science, Universitas Indonesia, Pacarnya Haechan· <a href="https://github.com/nashwanadilah/IHSG-Sectoral-Analysis" style="color:#e94560">GitHub</a></p>',
             unsafe_allow_html=True)
 st.markdown("---")
 
 # ── Sidebar ───────────────────────────────────────
-st.sidebar.markdown("## ⚙️ Settings")
+st.sidebar.markdown("##Settings")
 
 TICKERS = {
     "IHSG":                  "^JKSE",
@@ -136,7 +136,7 @@ TICKERS = {
 }
 
 selected = st.sidebar.multiselect(
-    "📈 Pilih Saham:",
+    "Pilih Saham:",
     options=list(TICKERS.keys()),
     default=["IHSG", "Financial (BBCA)", "Mining (ADRO)", "Consumer (UNVR)"]
 )
@@ -145,7 +145,7 @@ start_date = st.sidebar.date_input("Start Date", date(2020, 1, 1))
 end_date   = st.sidebar.date_input("End Date",   date(2025, 12, 31))
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("### 📌 About")
+st.sidebar.markdown("### About")
 st.sidebar.markdown("""
 Proyek analisis performa sektoral pasar modal Indonesia 
 menggunakan data historis 2020–2025.
